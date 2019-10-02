@@ -2,14 +2,18 @@ package builder
 
 import "github.com/buildpack/pack/dist"
 
-const OrderLabel = "io.buildpacks.buildpack.order"
-const BuildpackLayersLabel = "io.buildpacks.buildpack.layers"
+const (
+	OrderLabel           = "io.buildpacks.buildpack.order"
+	BuildpackLayersLabel = "io.buildpacks.buildpack.layers"
+	MixinsLabel          = "io.buildpacks.stack.mixins"
+)
 
 type BuildpackLayers map[string]map[string]BuildpackLayerInfo
 
 type BuildpackLayerInfo struct {
 	LayerDiffID string     `json:"layerDiffID"`
 	Order       dist.Order `json:"order,omitempty"`
+	// TODO: mixins?
 }
 
 type Metadata struct {

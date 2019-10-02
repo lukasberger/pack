@@ -82,7 +82,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
 	}
 
-	runImage := c.resolveRunImage(opts.RunImage, imageRef.Context().RegistryStr(), bldr.GetStackInfo(), opts.AdditionalMirrors)
+	runImage := c.resolveRunImage(opts.RunImage, imageRef.Context().RegistryStr(), bldr.Stack(), opts.AdditionalMirrors)
 
 	if _, err := c.validateRunImage(ctx, runImage, opts.NoPull, opts.Publish, bldr.StackID); err != nil {
 		return errors.Wrapf(err, "invalid run-image '%s'", runImage)
@@ -99,7 +99,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.ImageRemoveOptions{Force: true})
 
-	descriptor := ephemeralBuilder.GetLifecycleDescriptor()
+	descriptor := ephemeralBuilder.LifecycleDescriptor()
 	if descriptor.Info.Version == nil {
 		c.logger.Warnf("lifecycle version unknown, assuming %s", style.Symbol(builder.AssumedLifecycleVersion))
 	} else {
@@ -143,11 +143,11 @@ func (c *Client) processBuilderName(builderName string) (name.Reference, error) 
 }
 
 func (c *Client) processBuilderImage(img imgutil.Image) (*builder.Builder, error) {
-	bldr, err := builder.GetBuilder(img)
+	bldr, err := builder.Get(img)
 	if err != nil {
 		return nil, err
 	}
-	if bldr.GetStackInfo().RunImage.Image == "" {
+	if bldr.Stack().RunImage.Image == "" {
 		return nil, errors.New("builder metadata is missing runImage")
 	}
 	return bldr, nil
@@ -338,6 +338,9 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(origBuilderName))
 	}
+
+	// validate build <-> run (--run-image | builder meta) -- non-strict
+
 	bldr.SetEnv(env)
 	for _, bp := range buildpacks {
 		bpInfo := bp.Descriptor().Info
@@ -348,6 +351,7 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 		c.logger.Debug("Setting custom order")
 		bldr.SetOrder([]dist.OrderEntry{group})
 	}
+
 	if err := bldr.Save(c.logger); err != nil {
 		return nil, err
 	}

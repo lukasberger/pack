@@ -10,7 +10,9 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -50,6 +52,7 @@ type Builder struct {
 	lifecycleDescriptor  LifecycleDescriptor
 	additionalBuildpacks []dist.Buildpack
 	metadata             Metadata
+	mixins               []string
 	env                  map[string]string
 	UID, GID             int
 	StackID              string
@@ -61,8 +64,8 @@ type orderTOML struct {
 	Order dist.Order `toml:"order"`
 }
 
-// GetBuilder constructs builder from builder image
-func GetBuilder(img imgutil.Image) (*Builder, error) {
+// Get constructs a builder from a builder image
+func Get(img imgutil.Image) (*Builder, error) {
 	var metadata Metadata
 	if ok, err := dist.GetLabel(img, metadataLabel, &metadata); err != nil {
 		return nil, err
@@ -95,6 +98,11 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Bu
 		return nil, fmt.Errorf("image %s missing label %s", style.Symbol(img.Name()), style.Symbol(stackLabel))
 	}
 
+	var mixins []string
+	if _, err := dist.GetLabel(img, MixinsLabel, &mixins); err != nil {
+		return nil, err
+	}
+
 	if newName != "" && img.Name() != newName {
 		img.Rename(newName)
 	}
@@ -124,6 +132,7 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Bu
 	return &Builder{
 		image:    img,
 		metadata: metadata,
+		mixins:   mixins,
 		order:    order,
 		UID:      uid,
 		GID:      gid,
@@ -145,19 +154,19 @@ func (b *Builder) Description() string {
 	return b.metadata.Description
 }
 
-func (b *Builder) GetLifecycleDescriptor() LifecycleDescriptor {
+func (b *Builder) LifecycleDescriptor() LifecycleDescriptor {
 	return b.lifecycleDescriptor
 }
 
-func (b *Builder) GetBuildpacks() []BuildpackMetadata {
+func (b *Builder) Buildpacks() []BuildpackMetadata {
 	return b.metadata.Buildpacks
 }
 
-func (b *Builder) GetCreatedBy() CreatorMetadata {
+func (b *Builder) CreatedBy() CreatorMetadata {
 	return b.metadata.CreatedBy
 }
 
-func (b *Builder) GetOrder() dist.Order {
+func (b *Builder) Order() dist.Order {
 	return b.order
 }
 
@@ -165,8 +174,11 @@ func (b *Builder) Name() string {
 	return b.image.Name()
 }
 
-func (b *Builder) GetStackInfo() StackMetadata {
+func (b *Builder) Stack() StackMetadata {
 	return b.metadata.Stack
+}
+func (b *Builder) Mixins() []string {
+	return b.mixins
 }
 
 func (b *Builder) AddBuildpack(bp dist.Buildpack) {
@@ -195,13 +207,18 @@ func (b *Builder) SetDescription(description string) {
 	b.metadata.Description = description
 }
 
-func (b *Builder) SetStackInfo(stackConfig StackConfig) {
+func (b *Builder) SetStack(stackConfig StackConfig) {
 	b.metadata.Stack = StackMetadata{
 		RunImage: RunImageMetadata{
 			Image:   stackConfig.RunImage,
 			Mirrors: stackConfig.RunImageMirrors,
 		},
 	}
+}
+
+// TODO: Test effect of this in Save()
+func (b *Builder) SetMixins(mixins []string) {
+	b.mixins = mixins
 }
 
 func (b *Builder) Save(logger logging.Logger) error {
@@ -239,7 +256,7 @@ func (b *Builder) Save(logger logging.Logger) error {
 		}
 	}
 
-	if err := validateBuildpacks(b.StackID, b.GetLifecycleDescriptor(), b.additionalBuildpacks); err != nil {
+	if err := validateBuildpacks(b.StackID, b.LifecycleDescriptor(), b.additionalBuildpacks); err != nil {
 		return errors.Wrap(err, "validating buildpacks")
 	}
 
@@ -286,6 +303,10 @@ func (b *Builder) Save(logger logging.Logger) error {
 		bpLayers[bpInfo.ID][bpInfo.Version] = BuildpackLayerInfo{
 			LayerDiffID: diffID.String(),
 			Order:       bp.Descriptor().Order,
+		}
+
+		if err := validateBuildpackMixins(bp.Descriptor(), b.StackID, b.mixins); err != nil {
+			return err
 		}
 	}
 
@@ -341,11 +362,52 @@ func (b *Builder) Save(logger logging.Logger) error {
 		return err
 	}
 
+	if err := dist.SetLabel(b.image, MixinsLabel, b.mixins); err != nil {
+		return err
+	}
+
 	if err := b.image.SetWorkingDir(layersDir); err != nil {
 		return errors.Wrap(err, "failed to set working dir")
 	}
 
 	return b.image.Save()
+}
+
+func validateBuildpackMixins(bp dist.BuildpackDescriptor, builderStackID string, builderMixins []string) error {
+	avail := map[string]interface{}{}
+	for _, m := range builderMixins {
+		avail[m] = nil
+	}
+
+	if len(bp.Stacks) == 0 {
+		return nil // Order buildpack, no validation required
+	}
+
+	bpMixins, err := findBuildpackMixins(bp, builderStackID)
+	if err != nil {
+		return err
+	}
+
+	var missing []string
+	for _, m := range bpMixins {
+		if _, ok := avail[m]; !ok {
+			missing = append(missing, m)
+		}
+	}
+	sort.Strings(missing)
+	if len(missing) > 0 {
+		return fmt.Errorf("buildpack %s missing required mixin(s): %s", style.Symbol(bp.Info.ID+"@"+bp.Info.Version), strings.Join(missing, ", "))
+	}
+	return nil
+}
+
+func findBuildpackMixins(bp dist.BuildpackDescriptor, stackID string) ([]string, error) {
+	for _, s := range bp.Stacks {
+		if s.ID == stackID {
+			return s.Mixins, nil
+		}
+	}
+	return nil, fmt.Errorf("buildpack %s does not support stack %s", style.Symbol(bp.Info.ID+"@"+bp.Info.Version), style.Symbol(stackID))
 }
 
 func processOrder(buildpacks []BuildpackMetadata, order dist.Order) (dist.Order, error) {

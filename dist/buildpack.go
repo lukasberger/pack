@@ -46,7 +46,8 @@ type BuildpackInfo struct {
 }
 
 type Stack struct {
-	ID string
+	ID     string
+	Mixins []string
 }
 
 func NewBuildpack(blob Blob) (Buildpack, error) {
