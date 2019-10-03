@@ -84,7 +84,7 @@ func inspectBuilderOutput(client PackClient, cfg config.Config, imageName string
 	}
 
 	var buf bytes.Buffer
-	warnings, err := generateOutput(&buf, imageName, cfg, *info)
+	warnings, err := generateBuilderOutput(&buf, imageName, cfg, *info)
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "writing output for %s image '%s'", source, imageName)
 	}
@@ -92,7 +92,7 @@ func inspectBuilderOutput(client PackClient, cfg config.Config, imageName string
 	return buf.String(), warnings, nil
 }
 
-func generateOutput(writer io.Writer, imageName string, cfg config.Config, info pack.BuilderInfo) (warnings []string, err error) {
+func generateBuilderOutput(writer io.Writer, imageName string, cfg config.Config, info pack.BuilderInfo) (warnings []string, err error) {
 	tpl := template.Must(template.New("").Parse(`
 {{ if ne .Info.Description "" -}}
 Description: {{ .Info.Description }}

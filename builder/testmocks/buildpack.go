@@ -5,12 +5,10 @@
 package testmocks
 
 import (
+	builder "github.com/buildpack/pack/builder"
+	gomock "github.com/golang/mock/gomock"
 	io "io"
 	reflect "reflect"
-
-	gomock "github.com/golang/mock/gomock"
-
-	builder "github.com/buildpack/pack/builder"
 )
 
 // MockBuildpack is a mock of Buildpack interface
