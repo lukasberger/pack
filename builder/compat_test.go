@@ -42,7 +42,7 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		baseImage = fakes.NewImage("base/image", "", "")
+		baseImage = fakes.NewImage("base/image", "", nil)
 		mockController = gomock.NewController(t)
 		mockLifecycle = testmocks.NewMockLifecycle(mockController)
 
@@ -356,7 +356,7 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			h.AssertNil(t, baseImage.AddLayer(layerFile))
-			_, err = baseImage.Save()
+			err = baseImage.Save()
 			h.AssertNil(t, err)
 
 			h.AssertNil(t, subject.Save(logger))

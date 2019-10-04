@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"text/tabwriter"
 
+	"github.com/buildpack/lifecycle"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
@@ -20,7 +21,7 @@ import (
 //go:generate mockgen -package mocks -destination mocks/pack_client.go github.com/buildpack/pack/commands PackClient
 type PackClient interface {
 	InspectBuilder(string, bool) (*pack.BuilderInfo, error)
-	Rebase(context.Context, pack.RebaseOptions) error
+	Rebase(context.Context, lifecycle.Rebaser, pack.RebaseOptions) error
 	CreateBuilder(context.Context, pack.CreateBuilderOptions) error
 	Build(context.Context, pack.BuildOptions) error
 }

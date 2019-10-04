@@ -6,11 +6,10 @@ package mocks
 
 import (
 	context "context"
-	reflect "reflect"
-
-	gomock "github.com/golang/mock/gomock"
-
+	lifecycle "github.com/buildpack/lifecycle"
 	pack "github.com/buildpack/pack"
+	gomock "github.com/golang/mock/gomock"
+	reflect "reflect"
 )
 
 // MockPackClient is a mock of PackClient interface
@@ -80,15 +79,15 @@ func (mr *MockPackClientMockRecorder) InspectBuilder(arg0, arg1 interface{}) *go
 }
 
 // Rebase mocks base method
-func (m *MockPackClient) Rebase(arg0 context.Context, arg1 pack.RebaseOptions) error {
+func (m *MockPackClient) Rebase(arg0 context.Context, arg1 lifecycle.Rebaser, arg2 pack.RebaseOptions) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Rebase", arg0, arg1)
+	ret := m.ctrl.Call(m, "Rebase", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Rebase indicates an expected call of Rebase
-func (mr *MockPackClientMockRecorder) Rebase(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockPackClientMockRecorder) Rebase(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rebase", reflect.TypeOf((*MockPackClient)(nil).Rebase), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rebase", reflect.TypeOf((*MockPackClient)(nil).Rebase), arg0, arg1, arg2)
 }
