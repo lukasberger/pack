@@ -6,10 +6,12 @@ package mocks
 
 import (
 	context "context"
-	lifecycle "github.com/buildpack/lifecycle"
-	pack "github.com/buildpack/pack"
-	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
+
+	lifecycle "github.com/buildpack/lifecycle"
+	gomock "github.com/golang/mock/gomock"
+
+	pack "github.com/buildpack/pack"
 )
 
 // MockPackClient is a mock of PackClient interface

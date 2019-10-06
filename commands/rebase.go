@@ -4,7 +4,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/lifecycle"
-	lclogging "github.com/buildpack/lifecycle/logging"
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/config"
@@ -21,7 +20,7 @@ func Rebase(logger logging.Logger, cfg config.Config, client PackClient) *cobra.
 		Args:  cobra.ExactArgs(1),
 		Short: "Rebase app image with latest run image",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			rebaser := lifecycle.Rebaser{Logger: logger.(lclogging.Logger)}
+			rebaser := lifecycle.Rebaser{Logger: logger}
 			opts.RepoName = args[0]
 			opts.AdditionalMirrors = getMirrors(cfg)
 			if err := client.Rebase(ctx, rebaser, opts); err != nil {

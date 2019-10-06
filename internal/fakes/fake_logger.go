@@ -12,6 +12,10 @@ type fakeLog struct {
 	w io.Writer
 }
 
+func (f *fakeLog) WantLevel(string) {
+	//do nothing
+}
+
 // NewFakeLogger create a logger to capture output for testing purposes.
 func NewFakeLogger(w io.Writer) *fakeLog { //nolint:golint,gosimple
 	f := &fakeLog{

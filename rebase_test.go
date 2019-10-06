@@ -275,5 +275,5 @@ func (f *fakeLifecycleLogger) Writer() io.Writer {
 }
 
 func (f *fakeLifecycleLogger) WantLevel(level string) {
-	panic("implement me")
+	//do nothing
 }

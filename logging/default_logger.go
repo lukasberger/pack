@@ -64,3 +64,7 @@ func (l *defaultLogger) Writer() io.Writer {
 func (l *defaultLogger) IsVerbose() bool {
 	return false
 }
+
+func (l *defaultLogger) WantLevel(level string) {
+	// do nothing
+}
