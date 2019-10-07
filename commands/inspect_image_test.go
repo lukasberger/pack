@@ -140,15 +140,13 @@ func testInspectImageCommand(t *testing.T, when spec.G, it spec.S) {
 					{BuildpackInfo: buildpack2Info, Latest: false},
 				}
 				remoteInfo = &pack.ImageInfo{
-					Stack:           "test.stack.id.remote",
-					Buildpacks:      buildpacks,
-					Base: pack.ImageBase{
-
-					},
+					StackID:    "test.stack.id.remote",
+					Buildpacks: buildpacks,
+					Base:       pack.ImageBase{},
 				}
 				localInfo = &pack.ImageInfo{
-					Stack:           "test.stack.id.local",
-					Buildpacks:      buildpacks,
+					StackID:    "test.stack.id.local",
+					Buildpacks: buildpacks,
 				}
 			)
 
