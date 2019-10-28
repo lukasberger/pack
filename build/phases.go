@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Masterminds/semver"
+	"github.com/buildpack/pack/builder"
 )
 
 const (
@@ -34,12 +35,18 @@ func (l *Lifecycle) Detect(ctx context.Context, networkMode string) error {
 }
 
 func (l *Lifecycle) Restore(ctx context.Context, cacheName string) error {
+
+	cacheFlag := "-cache-dir"
+	if semver.MustParse(l.version).LessThan(semver.MustParse(builder.DefaultLifecycleVersion)) {
+		cacheFlag = "-path"
+	}
+
 	restore, err := l.NewPhase(
 		"restorer",
 		WithDaemonAccess(),
 		WithArgs(
 			l.withLogLevel(
-				"-path", cacheDir,
+				cacheFlag, cacheDir,
 				"-layers", layersDir,
 			)...,
 		),
@@ -112,8 +119,8 @@ func (l *Lifecycle) Build(ctx context.Context, networkMode string) error {
 	return build.Run(ctx)
 }
 
-func (l *Lifecycle) Export(ctx context.Context, repoName string, runImage string, publish bool, launchCacheName string) error {
-	export, err := l.newExport(repoName, runImage, publish, launchCacheName)
+func (l *Lifecycle) Export(ctx context.Context, repoName string, runImage string, publish bool, launchCacheName, cacheName string) error {
+	export, err := l.newExport(repoName, runImage, publish, launchCacheName, cacheName)
 	if err != nil {
 		return err
 	}
@@ -121,7 +128,7 @@ func (l *Lifecycle) Export(ctx context.Context, repoName string, runImage string
 	return export.Run(ctx)
 }
 
-func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCacheName string) (*Phase, error) {
+func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCacheName, cacheName string) (*Phase, error) {
 	if publish {
 		return l.NewPhase(
 			"exporter",
@@ -137,20 +144,28 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 		)
 	}
 
+	args := []string{}
+	if cacheName != "" {
+		args = append(args, "-cache-dir", cacheDir)
+	}
+	args = append(
+		args,
+		"-image", runImage,
+		"-layers", layersDir,
+		"-app", appDir,
+		"-daemon",
+		"-launch-cache", launchCacheDir,
+		repoName,
+	)
+
 	return l.NewPhase(
 		"exporter",
 		WithDaemonAccess(),
 		WithArgs(
-			l.withLogLevel(
-				"-image", runImage,
-				"-layers", layersDir,
-				"-app", appDir,
-				"-daemon",
-				"-launch-cache", launchCacheDir,
-				repoName,
-			)...,
+			l.withLogLevel(args...)...,
 		),
 		WithBinds(fmt.Sprintf("%s:%s", launchCacheName, launchCacheDir)),
+		WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
 	)
 }
 

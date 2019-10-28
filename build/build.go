@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -97,15 +98,17 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	}
 
 	l.logger.Info(style.Step("EXPORTING"))
-	launchCacheName := launchCache.Name()
-	if err := l.Export(ctx, opts.Image.Name(), opts.RunImage, opts.Publish, launchCacheName); err != nil {
+	if err := l.Export(ctx, opts.Image.Name(), opts.RunImage, opts.Publish, launchCache.Name(), buildCache.Name()); err != nil {
 		return err
 	}
 
-	l.logger.Info(style.Step("CACHING"))
-	if err := l.Cache(ctx, buildCache.Name()); err != nil {
-		return err
+	if semver.MustParse(l.version).LessThan(semver.MustParse(builder.DefaultLifecycleVersion)) {
+		l.logger.Info(style.Step("CACHING"))
+		if err := l.Cache(ctx, buildCache.Name()); err != nil {
+			return err
+		}
 	}
+
 	return nil
 }
 

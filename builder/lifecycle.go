@@ -8,6 +8,7 @@ import (
 	"regexp"
 
 	"github.com/BurntSushi/toml"
+	"github.com/Masterminds/semver"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/api"
@@ -19,21 +20,9 @@ const (
 	AssumedLifecycleVersion   = "0.3.0"
 	AssumedPlatformAPIVersion = "0.1"
 
-	DefaultLifecycleVersion    = "0.5.0"
+	DefaultLifecycleVersion    = "0.6.0"
 	DefaultBuildpackAPIVersion = "0.2"
 	DefaultPlatformAPIVersion  = "0.1"
-)
-
-var (
-	lifecycleBinaries = []string{
-		"detector",
-		"restorer",
-		"analyzer",
-		"builder",
-		"exporter",
-		"cacher",
-		"launcher",
-	}
 )
 
 type Blob interface {
@@ -112,6 +101,22 @@ func (l *lifecycle) Descriptor() LifecycleDescriptor {
 	return l.descriptor
 }
 
+// Binaries returns a list of all binaries contained in the lifecycle.
+func (l *lifecycle) Binaries() []string {
+	binaries := []string{
+		"detector",
+		"restorer",
+		"analyzer",
+		"builder",
+		"exporter",
+		"launcher",
+	}
+	if l.Descriptor().Info.Version.LessThan(semver.MustParse(DefaultLifecycleVersion)) {
+		binaries = append(binaries, "cacher")
+	}
+	return binaries
+}
+
 func (l *lifecycle) validateBinaries() error {
 	rc, err := l.Open()
 	if err != nil {
@@ -135,7 +140,7 @@ func (l *lifecycle) validateBinaries() error {
 			headers[pathMatches[1]] = true
 		}
 	}
-	for _, p := range lifecycleBinaries {
+	for _, p := range l.Binaries() {
 		_, found := headers[p]
 		if !found {
 			return fmt.Errorf("did not find '%s' in tar", p)
